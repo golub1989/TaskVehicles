@@ -21,10 +21,46 @@ namespace VehicleProject.Controllers
         }
 
         // GET: VehicleModels
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+            string sortOrder,
+            string currentFilter,
+            string searchString,
+            int? pageNumber)
         {
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["VehicleSortParm"] = String.IsNullOrEmpty(sortOrder) ? "Descending" : "";
+            ViewData["ModSortParm"] = String.IsNullOrEmpty(sortOrder) ? "Desc" : "";
+            ViewData["CurrentFilter"] = searchString;
+
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
             var mVCContext = _context.Models.Include(v => v.VehicleMakes);
-            return View(await mVCContext.ToListAsync());
+            var mod = from m in mVCContext
+                          select m;
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                mod = mod.Where(m => m.VehicleMakes.Abbreviation.Contains(searchString));
+            }
+
+            switch (sortOrder)
+            {
+                case "Descending":
+                    mod = mod.OrderByDescending(m => m.ModelName);
+                    break;
+                default:
+                    mod = mod.OrderBy(m => m.ModelName);
+                    break;
+            }
+
+            int pageSize = 5;
+            return View(await PaginatedList<VehicleModel>.CreateAsync(mod.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: VehicleModels/Details/5
